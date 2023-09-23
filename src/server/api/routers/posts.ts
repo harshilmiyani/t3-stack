@@ -1,12 +1,22 @@
 import { clerkClient } from "@clerk/nextjs";
 import type { User } from "@clerk/nextjs/dist/types/server";
 import { TRPCError } from "@trpc/server";
+import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
+import { Redis } from "@upstash/redis";
+
 import { z } from "zod";
 import {
   createTRPCRouter,
   privateProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
+
+// Create a new ratelimiter, that allows 3 requests per 1 minute
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(3, "1 m"),
+  analytics: true,
+});
 
 const filterUserForClinet = (user: User) => {
   return {
@@ -48,11 +58,18 @@ export const postsRouter = createTRPCRouter({
   create: privateProcedure
     .input(
       z.object({
-        content: z.string().emoji().min(1).max(280),
+        content: z.string().emoji("Only emoji are allowed.").min(1).max(280),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
+      const { success } = await ratelimit.limit(authorId);
+
+      if (!success) {
+        return new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+        });
+      }
 
       const post = await ctx.db.post.create({
         data: {
