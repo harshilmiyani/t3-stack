@@ -34,7 +34,6 @@ const postWithUserData = async (posts: Post[]) => {
       limit: 100,
     })
   ).map(filterUserForClinet);
-  console.log(users);
   return posts.map((post) => {
     const author = users.find((user) => user.id == post.authorId);
     if (!author)
@@ -50,6 +49,17 @@ const postWithUserData = async (posts: Post[]) => {
 };
 
 export const postsRouter = createTRPCRouter({
+  getById: publicProcedure.input(z.string()).query(async ({ ctx, input }) => {
+    const post = await ctx.db.post.findUnique({
+      where: {
+        id: input,
+      },
+    });
+    if (!post) throw new TRPCError({ code: "NOT_FOUND" });
+
+    return (await postWithUserData([post]))[0];
+  }),
+
   getAll: publicProcedure.query(async ({ ctx }) => {
     const posts = await ctx.db.post.findMany({
       take: 100,
