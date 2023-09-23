@@ -1,5 +1,4 @@
-import { SignIn, useUser } from "@clerk/nextjs";
-import Head from "next/head";
+import { SignInButton, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -129,7 +128,7 @@ export default function Home() {
     <>
       <PageLayout>
         <div className="flex border-b border-b-white p-4">
-          {!isSignedIn && <SignIn />}
+          {!isSignedIn && <SignInButton />}
           {isSignedIn && <CreatePostWizard />}
         </div>
         <Feed />
